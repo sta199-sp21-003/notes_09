@@ -1,0 +1,324 @@
+---
+title: "Web scraping"
+author: ""
+date: ""
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Main ideas
+
+- An increasing amount of data is available on the web.
+- These data are often in an unstructured format that is tedious to obtain
+  manually.
+- Webscraping refers to the process of automating information extraction from
+  unstructured sources and transforming it to a structured dataset.
+- We will provide two different methods to scrape the web (our focus will
+  be on the first approach):
+  - screen scraping - extracting data from the source code of a website using
+    an HTML parser or regular expressions
+  - web APIs (application programming interfaces) - useful when a website allows
+    for structured requests that return JSON or XML files
+
+## Packages
+
+```{r load-packages, message = FALSE}
+library(tidyverse)
+library(stringr)
+library(robotstxt)
+library(rvest)
+library(httr)
+```
+
+## Lecture notes and exercises
+
+### Webscraping using `rvest`
+
+One way to acquire data from the web is by finding content inside the HTML 
+(hypertext markup language) code used to create web pages and web applications.
+
+HTML describes the structure of a web page. Your browser interprets the 
+structure and contents and displays the results.
+
+The basic building blocks are **elements**, **tags**, and **attributes**.
+
+- An element is a component of an HTML document.
+- Elements contain tags (start and end)
+- Attributes provide additional information about HTML elements
+
+<center>
+<img src="images/html.png">
+</center>
+
+Say we have access to a simple HTML document like `simple.html`. How can we 
+extract information and get it in a structured format suitable for analysis 
+(including visualization, wrangling, etc)?
+
+### Package `rvest`
+
+The `rvest` package makes processing and manipulating HTML data
+straightforward. It's designed to work with our standard data-wrangling tools
+including the pipe `%>%`.
+
+The core `rvest` functions are provided below. The primary three are provided
+first.
+
+- `read_html()`: read HTML data from a url or character string
+- `html_nodes()`: select specified nodes from HTML document
+- `html_text()`: extract tag pairs' content
+
+- `html_node()`: select a specified node from HTML document
+- `html_table()`: parse an HTML table into a data frame
+- `html_name()`: extract tags' names
+- `html_attrs()`: extract all of each tag's attributes
+- `html_attr()`: extract tags' attribute value by name
+
+Remember `simple.html`?
+
+```{r read-in-html}
+page <- read_html("simple.html")
+page
+```
+
+Let's extract `"<h1>Using rvest</h1>"` using `html_nodes()`.
+
+```{r subset}
+h1_nodes <- page %>%
+  html_nodes(css = "h1")
+h1_nodes
+```
+
+Now extract the contents ("Using rvest") and the the tag name ("h1").
+
+```{r subset-2}
+h1_nodes %>%
+  html_text()
+
+h1_nodes %>%
+  html_name()
+```
+
+So easy! But this was a very simple case. Most HTML documents are quite a bit
+more complicated. There may be tables, many links, paragraphs of text, etc.
+
+1. How do we handle larger HTML documents? 
+2. How do we know what to provide to `html_nodes()` to obtain the desired
+   information in a more realistic example?
+3. Are the functions in `rvest` vectorized? That is, can we obtain all the
+   content with a particular tag?
+
+In Chrome you can view the HTML document associated with a webpage at 
+"View" -> "Developer" -> "View Source".
+
+### SelectorGadget
+
+SelectorGadget is an open source tool that allows for easy CSS selector
+generation and discovery. It is easiest to use with a [Chrome Extension](https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb) 
+but you can also add it as a [bookmark](https://selectorgadget.com/). 
+
+To use SelectorGadget, navigate to a website of interest (we will use the 
+website [https://www.imdb.com/](https://www.imdb.com/)), then click the
+SelectorGadget bookmark. A box will open in the bottom right corner of the
+website.
+
+Click on a page element. It will turn green and SelectorGadget will generate a
+minimal CSS selector for that element, and it will highlight in yellow 
+everything matched by that selector.
+
+Click on a yellow highlighted element to remove it from the selector. These will
+now be highlighted in red. Or click a non-highlighted element to add it to the 
+selector.
+
+Through an iterative process of selection and rejection, SelectorGadget will 
+help you discover the appropriate CSS selector.
+
+### Top 250 IMDb Movies
+
+We will scrape information from [IMDb](http:www.imdb.com/chart/top).
+
+Let's first check to see if this is allowed.
+
+```{r good-citizen}
+paths_allowed("http://www.imdb.com")
+paths_allowed("http://www.facebook.com")
+```
+
+```{r select-top-250}
+
+```
+
+**Question:** What is a limitation of this method of scraping? Hint: consider
+what will happen if there is a missing value.
+
+Data will often require quite a bit of cleaning. The functions from `stringr`
+will come in handy here.
+
+```{r glimpse-imdb}
+
+```
+
+Let's add a rank column using mutate.
+
+```{r add-rank}
+
+```
+
+Here's another quick example. The website already has the data in table form, 
+so we can use `html_table()`.
+
+```{r scrape-baby-names}
+url <- "https://www.ssa.gov/oact/babynames/decades/names2000s.html"
+paths_allowed(url)
+
+```
+
+### Practice
+
+(1) Which 1995 movies are in the top 250 IMDb movies of all time?
+
+```{r practice-1}
+
+```
+
+
+(2) What years have the most movies on the list?
+
+```{r practice-2}
+
+```
+
+
+(3) Visualize the average yearly score for movies that made it on the top 250 
+    list over time.
+    
+```{r practice-3}
+
+```
+
+
+(4) Modify the code chunk below to scrape the year, title, and rating of the top
+    100 most popular TV shows.
+
+```{r scrape-top-tv-shows, eval = FALSE}
+page <- read_html("http://www.imdb.com/chart/tvmeter")
+
+years <- page %>%
+  html_nodes("___") %>%
+  html_text() %>%
+  ___
+
+scores <- page %>%
+  ___
+
+names <-  ___
+
+tvshows <- tibble(
+  rank = 1:100,
+  ___,
+  ___,
+  ___
+)
+```
+
+## Supplementary material
+
+### Web APIs
+
+APIs (Application Programming Inferfaces) are software that allow two 
+applications to communicate. APIs exist when website developers make data 
+easily obtainable. The HTTP (hypertext transfer protocol) underlies APIs and the 
+`R` package `httr` (loaded above) helps us use this tool.
+
+In essence, you send a request to the website you want data from and they send
+a response.
+
+This is an extremely quick introduction to help you get started. For additional
+information, check out the **additional resources** below.
+
+A website with a list of publicly available APIs is 
+[here](https://github.com/toddmotto/public-apis).
+
+The website [omdbapi.com](http://www.omdbapi.com) makes movie data from the 
+Internet Movie Database (IMDb) available online. Register for an API key
+under the API Key menu item at the site.
+
+Enter you API key as a character object and save it as `my_api_key`.
+
+```{r api-demo, eval = TRUE}
+my_api_key <- "934b95b4"  
+```
+
+Let's use the API to pull information from the 1990 Arnold Schwarzenegger
+classic *Total Recall*.
+
+We obtain the URL by searching for Total Recall at 
+[omdbapi.com](http://www.omdbapi.com).
+
+The default response is JSON. This stands for JavaScript Object Notation, 
+which is a standard data format for APIs.
+
+```{r first-api}
+url <- str_c("http://www.omdbapi.com/?t=Total+Recall&apikey=", my_api_key)
+
+mars <- GET(url)   # mars holds response from server
+mars               # Status of 200 is good!
+
+details <- content(mars, "parse")   # list of 25 pieces of information
+details$Year                        # how to access details
+details$imdbRating
+details$Plot
+```
+
+Let's build a dataset containing information on 1980's classic action films 
+using the API.
+
+```{r api-for-movies, eval = FALSE}
+# make a vector of movies
+movies <- c("Total+Recall", "Predator", "Commando", "The+Running+Man",
+            "True+Lies", "Robocop")
+
+# Set up empty tibble
+omdb <- tibble(title       = character(), 
+               rated       = character(), 
+               genre       = character(),
+               actors      = character(),
+               metascore   = double(), 
+               imdb_rating = double(),
+               box_office  = double())
+
+# Use for loop to run through API request process 6 times,
+#   each time filling the next row in the tibble
+#  - can do max of 1000 GETs per day
+for(i in 1:6) {
+  
+  url <- str_c("http://www.omdbapi.com/?t=", movies[i],
+               "&apikey=", my_api_key)
+  
+  onemovie <- GET(url)
+  
+  details <- content(onemovie, "parse")
+  
+  omdb[i,1] <- details$Title
+  omdb[i,2] <- details$Rated
+  omdb[i,3] <- details$Genre
+  omdb[i,4] <- details$Actors
+  omdb[i,5] <- parse_number(details$Metascore)
+  omdb[i,6] <- parse_number(details$imdbRating)
+  omdb[i,7] <- parse_number(details$BoxOffice)
+  
+}
+
+omdb
+```
+
+**Question:** What does `parse_number()` do in the code chunk above? Take a look
+at R's help.
+
+## Additional Resources
+
+- [`httr` guide](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html)
+- [`rvest` official page](https://rvest.tidyverse.org/)
+- [Beginners guide to `rvest`](https://www.analyticsvidhya.com/blog/2017/03/beginners-guide-on-web-scraping-in-r-using-rvest-with-hands-on-knowledge/)
+- [SelectorGadget vignette](https://cran.r-project.org/web/packages/rvest/vignettes/selectorgadget.html)
+- [CSS Selector tutorial](http://flukeout.github.io/)
